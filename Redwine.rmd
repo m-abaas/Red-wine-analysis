@@ -1,0 +1,434 @@
+Red Wine Analysis and Exploration by Mustafa Abaas 
+========================================================
+# Description 
+
+This project is aiming to exploring, analyzing and drawing conclusion out of a tidy data set about Red Wine quality provided by Udacity. 
+
+> **Guidance**: Throughout the project and before every section, a header shall be included clarifying the purpose of that section.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Loading the Data
+df = read.csv('wineQualityReds.csv')
+```
+
+
+# Preliminary Exploration
+
+> **Flash Forward**: In this section there will be some preliminary exploration of
+the dataset, Including running some summaries of the data and create univariate plots to
+understand the structure of the individual variables in the dataset.
+
+## The data set structure
+
+```{r echo=FALSE, Univariate_Plots}
+names(df)
+
+```
+```{r echo=FALSE}
+str(df)
+```
+
+### Observations:
+
+The data set contains:
+
+* About 1600 observations.
+* 12 variables in addition to a unique identifier.
+* The data types are all numeric except for the quality.
+
+## Statistical Flash Forward of the data set
+
+```{r}
+summary(df)
+```
+
+## Univariate Plots Section
+> **Plots for all the variables provided**
+
+In this part we are just building an intuition for the data we are dealing with here.
+
+```{r}
+plotting <- function(dataframe, variable, label, filling = 'orangered3', colour = 'black'){
+  # A defined function for plotting to reduce code repition.
+  breaks <- pretty(range(variable), n = nclass.FD(variable), min.n = 1)
+  bwidth <- breaks[2]- breaks[1] 
+  return(ggplot(aes(x = variable), data = dataframe) +
+            geom_histogram(binwidth=bwidth,fill=filling,colour=colour) + 
+            xlab(label))
+}
+A = plotting(df, df$fixed.acidity, 'Fixed Acidity')
+B = plotting(df, df$volatile.acidity, 'Volatile Acidity')
+C = plotting(df, df$citric.acid, 'Citric Acid')
+D = plotting(df, df$residual.sugar, 'Residual Sugar')
+E = plotting(df, df$chlorides, 'Chlorides')
+G = plotting(df, df$free.sulfur.dioxide, 'Free Sulfur Dioxide')
+H = plotting(df, df$total.sulfur.dioxide, 'Total Sulfur Dioxide')
+I = plotting(df, df$density, 'Density')
+G = plotting(df, df$pH, 'Potential of Hydrogen')
+K = plotting(df, df$sulphates, 'Sulpahtes')
+L = plotting(df, df$alcohol, 'Alcohol')
+M = plotting(df, df$quality, 'Quality')
+
+grid.arrange(A, B, C, D, E, G, H, I, G, K, L,M , ncol = 3)
+```
+
+Observations:
+
+* Most of variables have a normally distributed shape.
+* Residual sugar and chlorides variables have cleaar evidence to the existance of outliers! The data is over crowded on the lower values, maybe there we can find some sort of a pattern.
+
+## Zooming in on some of the interesting variables
+
+> **Wine Quality Distribution**:
+
+```{r}
+# I chose bar plots since quality is a discrete varaible
+ggplot(aes(x = quality), data = df) +
+  geom_bar(fill = "orangered3", color="black") + 
+  ggtitle("Wine Quality Distribution") + 
+  xlab('Quality')
+```
+
+
+```{r}
+summary(df$quality)
+```
+
+### Observations:
+
+* The quality follows a normal distribution with a mean value of nearly 5.6.
+
+> **Alcohol Content Distribution**: 
+
+```{r}
+alcohol <- plotting(df, df$alcohol, 'Alcohol Percentage')
+alcohol +
+  ggtitle("Alcohol Percentage Distribution")
+```
+
+```{r}
+summary(df$alcohol)
+```
+
+### Observations: 
+
+* Surprisngly, it's a normal distribution! which means that one average red wine types tend to have around 10.2 of alcohol.
+
+> **Residual Sugar Distribution**:
+
+```{r}
+Residual_Sugar <- plotting(df, df$residual.sugar, 'Residual Sugar')
+Residual_Sugar + 
+  ggtitle("Residual Sugar Distribution - Original") 
+```
+
+There is outliers in this specific variable, we might try omitting them (those samples that have residual sugar greater than 5) for a more fair conclusion.
+
+```{r}
+Residual_Sugar = plotting(subset(df, residual.sugar <= 5 ), subset(df, residual.sugar <= 5 )$residual.sugar, 'Residual Sugar')
+Residual_Sugar +
+  ggtitle("Residual Sugar Distribution - Trimmed") 
+```
+
+Summary statistics for the trimmed data:
+
+```{r}
+summary(subset(df, residual.sugar <= 5 )$residual.sugar)
+```
+
+
+Back to our data set, we notice that:
+
+```{r}
+summary(df$residual.sugar)
+```
+
+### Observations: 
+
+* It's almost a right sekwed distribution if we took even the outliers into consideration, and it's a normal distribution otherwise.
+* The interesting thing to notice is that, there is a spike in this graph indicating that most red wine types are not very sweet with a low sugar level, does that has something to do with quality? In other words Do red wine types with less sugar content have the best quality? This is what the Bivariate section will handle.
+
+## Total acidity Distribution 
+
+Instead of dealing with each variable one at a time, i had an idea of observing the overall acidity levels in a given sample!
+Hopefully a pattern shall be revealed later on.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+df$acidity <- df$fixed.acidity + df$volatile.acidity + df$citric.acid
+```
+
+```{r}
+Acidity = plotting(df, df$acidity, 'Acidity')
+Acidity +
+  ggtitle("Acidity Distribution") 
+```
+
+```{r}
+summary(df$acidity)
+```
+
+### Observations:
+
+* It's following a normal distribution.
+
+# Univariate Analysis
+
+> **Flash Forward**: In this section, there are two main objectives. The first one is to simply answer some of the recommended questions ('Some' because the rest were already answered above or will be answered in the second objective of this section), and the second one is to modify the dataset for later usage, mainly converting quantitive variables into categorical ones.
+
+### What is the structure of your dataset?
+
+* About 1600 observations.
+* 12 variables in addition to a unique identifier.
+* The data types are all numeric except for the quality.
+
+### What is/are the main feature(s) of interest in your dataset?
+
+I think the answer to this question, is with no doubt **Quality** as it's the most important factor in any commercial process. I only wish a coloumn for the price was in presense, that would be very interesting to look at.
+
+### What other features in the dataset do you think will help support your \
+
+In this project i'll pay the most attention to the **Acidity** (A coloumn i created, refer to the previous section for more details), and to the **Residual sugar** coloumn.
+
+Note that: Additional coloumns might be used.
+
+## Second objective : Modifying The Residual Sugar Variable 
+
+```{r}
+summary(df$residual.sugar)
+```
+
+### Modifying technique
+
+Let's create a new coloumn that represents the sugar amount in the wine, calissifying each observation into low, moderate and high by following the next pattern:
+
+* Low : 0.9 - 1.9 
+* Moderate : 1.9 - 2.6 
+* High : 2.6 - 15.5 
+
+```{r}
+df$sugar.content <-
+  cut(df$residual.sugar, breaks = c(0.9,1.9,2.6,15.5),
+      labels = c('Low','Moderate','High'), include.lowest = TRUE) # Include lowest, makes 
+                                                                  # the interval enclusive
+```
+
+
+### Plotting 
+```{r}
+# Bar plots, since now it's a categorical variable!
+ggplot(aes(x = sugar.content), data = df) +
+  geom_bar() + 
+  xlab('Sugar Content')
+```
+
+## First objective : Modifying The quality Variable
+
+```{r}
+summary(df$quality)
+```
+
+### Modifying technique 
+
+Again, let's create a new coloumn that represents the quality, calissifying each observation into poor, good and excellent by following the next pattern:
+
+* Poor : 3 - 5 
+* Good : 5 - 6 
+* Excellent : 6 - 8
+
+```{r}
+df$quality.estimate <-
+  cut(df$quality, breaks = c(3,5,6,8),
+      labels = c('Poor','Good','Excellent'), include.lowest = TRUE) # Include lowest, makes 
+                                                                    # the interval enclusive
+```
+
+
+### Plotting
+```{r}
+ggplot(aes(x = quality.estimate), data = df) +
+  geom_bar() + 
+  xlab('Quality Estimate')
+```
+
+# Bivariate Plots Section
+
+> **Flash Forward**: In this section, we will buil plots based on what we saw in the univariate plots and what relationships between variables might be interesting to look at.
+We will look at relationships between supporting variables as well.
+
+```{r echo=FALSE, Bivariate_Plots}
+ggplot(aes(x = pH, y = residual.sugar ), data = df) +
+  geom_point(alpha = 1/5, color = 'purple4') +
+  xlab('pH') + 
+  ylab('Residual Sugar') + 
+  ggtitle('Residual Sugar vs pH')
+
+```
+
+```{r}
+ggplot(aes(x = density, y = acidity), data = df) +
+  geom_point(alpha = 1/5, color = 'purple4') +
+  xlab('Density') + 
+  ylab('Acidity') + 
+  ggtitle('Acidity vs Density')
+```
+
+```{r}
+ggplot(aes(x = pH, y = acidity), data = df) +
+  geom_point(alpha = 1/5, color = 'purple4') +
+  xlab('pH') + 
+  ylab('Acidity') + 
+  ggtitle('Acidity vs pH')
+```
+
+
+# Bivariate Analysis
+
+> **Flash Forward**: In this section, I'll just answer the recommended questions.
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+As mentioned before i decided to create a new coloumn that represents the overall **acidity** in the dataset, it turns out the the total **acidity** has strong correlation with denisity.
+Also the **pH** is strongly negatively correlated with the total **acidity**.
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+Yes, for example, the relation between **residual sugar** and **pH** is quite strange.
+Because as pH increases, the residual sugar is maintaing a certain range of values despite some outliers i pointed out earlier.
+
+### What was the strongest relationship you found?
+The **acidity** vs **density**! they are strongly positively correlated.
+
+
+# Multivariate Plots Section
+
+> **Flash Forward**: In this section, we will build plots based on what we saw in the bivariate plots and what relationships between variables might be interesting to look at, in this secion each plot has *Cause* which explains why i chose to notice the relation between these variables.
+
+## To be investagated: Relationship between pH and alcohol in terms of quality and sugar content.
+
+> **Cause:** Since we want to observe the relation between sugar content and other variables in terms of quality.
+
+```{r echo=FALSE, Multivariate_Plots}
+ggplot(data = df, aes(pH, alcohol, color = as.factor(quality.estimate))) +
+  geom_point() +
+  xlab('pH (Uniteless)') +
+  ylab('Alcohol (% volume)') + 
+  facet_grid(. ~ sugar.content) + 
+  scale_color_brewer(type = 'seq',palette = 1, direction = 1,
+  aesthetics = "RdPu") +
+   ggtitle("Potential of Hydrogen Vs Alcohol")
+```
+
+## To be investagated: Relationship between density and alcohol in terms of quality.
+
+> **Cause:** Since both showed a clear bias when being plotted.
+
+```{r echo=FALSE}
+ggplot(data = df, aes(alcohol, density, color = as.factor(quality.estimate))) +
+  geom_point() +
+  ylab('Density(g / d^3)') +
+  xlab('Alcohol (% volume)') +
+  scale_color_brewer(type = 'seq',palette = 1, direction = 1,
+  aesthetics = "RdPu") +
+   ggtitle("Density Vs Alcohol")
+```
+
+## To be investagated: Relationship Density and acidity in terms of quality.
+
+> **Cause:** Because they seem to have the same distribution shape and according to the bivirate plot on the previous section, they are strongly possitively correlated, so there is a reasonable chance to find correlation between them and the quality of the samples.
+
+```{r}
+ggplot(data = df, aes(density, acidity, color = as.factor(quality.estimate))) +
+  geom_point() +
+  xlab('Density') +
+  ylab('Acidity') +
+  scale_color_brewer(type = 'seq',palette = 1, direction = 1,
+  aesthetics = "RdPu") +
+  ggtitle("Acidity vs. Density")
+```
+
+# Multivariate Analysis
+> **Flash Forward**: In this section, I'll just answer the recommended questions.
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+Yes! as **alcohol percentage** increases and the **pH** *Potential of Hydrogen* decreases, these samples tend to have more quality.
+
+### Were there any interesting or surprising interactions between features?
+
+Yes! for a moment i thought that there might be a possible correlation between the **density** and the **total acidity** of the sample and the quality, for example, if they both increased, quality increases, but however the plot shows a uniform distribution and there is no baising in any direction.
+
+# Final Plots and Summary
+
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+ggplot(aes(x = density, y = acidity), data = df) +
+  geom_point(alpha = 1/5, color = 'purple4') +
+  xlab('Density (g / m^3)') + 
+  ylab('Acidity (g / d^3)') + 
+  ggtitle('Acidity vs Density')
+
+```
+
+### Description One
+
+The acidity and density are strongly positively correlated! This might tell a lot about our dataset. 
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+ggplot(data = df, aes(pH, alcohol, color = as.factor(quality.estimate))) +
+  geom_point() +
+  xlab('pH (Uniteless)') +
+  ylab('Alcohol (% volume)') + 
+  facet_grid(. ~ sugar.content) + 
+  scale_color_brewer(type = 'seq',palette = 1, direction = 1,
+  aesthetics = "RdPu") +
+   ggtitle("Potential of Hydrogen Vs Alcohol")
+```
+
+### Description Two
+A moderate sugar level with an alcohol percentage of about 3.6% and a pH number greater than tweleve givs the best quality!
+
+### Plot Three
+```{r echo=FALSE}
+ggplot(data = df, aes(alcohol, density, color = as.factor(quality.estimate))) +
+  geom_point() +
+  ylab('Density(g / d^3)') +
+  xlab('Alcohol (% volume)') +
+  scale_color_brewer(type = 'seq',palette = 1, direction = 1,
+  aesthetics = "RdPu") +
+   ggtitle("Density Vs Alcohol")
+
+```
+
+### Description Three
+
+As **alcohol percentage** increases and the **density** increases, the quality increases too.
+
+# Reflection
+
+> **Flash Forward**: In this sectio, I'll mention some of the struggles that i went through?
+What went well? What was surprising? Also i'll include an insight into
+future work that could be done with the dataset.
+
+## Project walk through: 
+
+The data set i worked with was pretty small and tidy and it surely was an advantage.
+The struggle in the project was all about programming in *R*, since it's my first time to learn and use this language i spent sometime figuring things out.
+I was surprised by some correlations between some variables i assumed to have none and also by the absence of correlation between others.
+
+## Future investigation
+
+I think that this data set suffers from the lack of the price factor! if the *price/litre* for example was provided, a better investigation and analysis shall be carried out.
+
+# Referneces 
+
+* How to choose bin size, [Stackoverflow answer](https://stackoverflow.com/questions/14200027/how-to-adjust-binwidth-in-ggplot2) to determine the binsize.
+* Sequential, diverging and qualitative colour scales from colorbrewer.org on the [official documentation](https://ggplot2.tidyverse.org/reference/scale_brewer.html).
+* This [Wikipedia page](https://en.wikipedia.org/wiki/pH) about the pH number as a referesher to high school chemistry.
+* Specifying Colours in ggplot, using the following [blog](http://sape.inf.usi.ch/quick-reference/ggplot2/colour).
